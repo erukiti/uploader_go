@@ -111,7 +111,7 @@ func TestUpload2(t *testing.T) {
 func TestDelete(t *testing.T) {
 	now, _ := time.Parse(time.RFC3339, "2014-01-01T00:00:00Z09:00")
 	dummyStorage := NewDummyStorage()
-	id := dummyStorage.Store([]byte("hoge"), FileMeta{isPrivate: false, contentType: "image/png", password: "pass", createdAt: now})
+	id := dummyStorage.Store([]byte("hoge"), NewMeta(false, "image/png", now, "pass"))
 	files := Files{storage: dummyStorage, expire: 1 * time.Minute}
 	id2, err := files.Delete(id, "pass", now)
 	assert.Equal(t, id, id2)
@@ -123,7 +123,7 @@ func TestDelete(t *testing.T) {
 func TestDelete2(t *testing.T) {
 	now, _ := time.Parse(time.RFC3339, "2014-01-01T00:00:00Z09:00")
 	dummyStorage := NewDummyStorage()
-	id := dummyStorage.Store([]byte("hoge"), FileMeta{isPrivate: false, contentType: "image/png", password: "pass", createdAt: now})
+	id := dummyStorage.Store([]byte("hoge"), NewMeta(false, "image/png", now, "pass"))
 	files := Files{storage: dummyStorage, expire: 1 * time.Minute}
 	_, err := files.Delete(id, "pa", now)
 	assert.NotNil(t, err)
@@ -135,7 +135,7 @@ func TestDelete2(t *testing.T) {
 func TestDelete3(t *testing.T) {
 	now, _ := time.Parse(time.RFC3339, "2014-01-01T00:00:00Z09:00")
 	dummyStorage := NewDummyStorage()
-	id := dummyStorage.Store([]byte("hoge"), FileMeta{isPrivate: false, contentType: "image/png", password: "pass", createdAt: now})
+	id := dummyStorage.Store([]byte("hoge"), NewMeta(false, "image/png", now, "pass"))
 	files := Files{storage: dummyStorage, expire: 1 * time.Minute}
 	_, err := files.Delete(id+1, "pass", now)
 	assert.NotNil(t, err)
@@ -147,7 +147,7 @@ func TestDelete3(t *testing.T) {
 func TestDelete4(t *testing.T) {
 	now, _ := time.Parse(time.RFC3339, "2014-01-01T00:00:00Z09:00")
 	dummyStorage := NewDummyStorage()
-	id := dummyStorage.Store([]byte("hoge"), FileMeta{isPrivate: false, contentType: "image/png", password: "pass", createdAt: now})
+	id := dummyStorage.Store([]byte("hoge"), NewMeta(false, "image/png", now, "pass"))
 	files := Files{storage: dummyStorage, expire: 1 * time.Minute}
 	_, err := files.Delete(id, "pass", now.Add(1*time.Minute))
 	assert.NotNil(t, err)

@@ -1,7 +1,10 @@
 package main
 
 import (
+	"crypto/sha1"
 	"errors"
+	"fmt"
+	"math/rand"
 	"time"
 )
 
@@ -13,14 +16,29 @@ type Storage interface {
 }
 
 type FileMeta struct {
-	isPrivate   bool
-	contentType string
-	createdAt   time.Time
-	password    string
+	isPrivate      bool
+	contentType    string
+	createdAt      time.Time
+	hashedPassword string
+	salt           string
+}
+
+func hashPassword(password, salt string) string {
+	return fmt.Sprintf("%x", sha1.Sum([]byte(salt+"$"+password)))
+}
+
+func createSalt() string {
+	return fmt.Sprintf("%x", rand.Int63)
 }
 
 func (this *FileMeta) IsAuth(password string) bool {
-	return this.password == password
+	return this.hashedPassword == hashPassword(password, this.salt)
+}
+
+func NewMeta(isPrivate bool, contentType string, createdAt time.Time, password string) FileMeta {
+	salt := createSalt()
+	hashedPassword := hashPassword(password, salt)
+	return FileMeta{isPrivate: isPrivate, contentType: contentType, createdAt: createdAt, hashedPassword: hashedPassword, salt: salt}
 }
 
 type Files struct {
@@ -42,7 +60,7 @@ func (this *Files) Download(id int, now time.Time) ([]byte, FileMeta, error) {
 }
 
 func (this *Files) Upload(content []byte, isPrivate bool, password string, contentType string, now time.Time) int {
-	return this.storage.Store(content, FileMeta{isPrivate, contentType, now, password})
+	return this.storage.Store(content, NewMeta(isPrivate, contentType, now, password))
 }
 
 func (this *Files) Delete(id int, password string, now time.Time) (int, error) {
