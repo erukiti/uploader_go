@@ -9,10 +9,10 @@ import (
 )
 
 type Storage interface {
-	Store(content []byte, meta FileMeta) int
-	Fetch(id int) ([]byte, FileMeta, error)
-	FetchMeta(id int) (FileMeta, error)
-	Delete(id int) (int, error)
+	Store(content []byte, meta FileMeta) (int64, error)
+	Fetch(id int64) ([]byte, FileMeta, error)
+	FetchMeta(id int64) (FileMeta, error)
+	Delete(id int64) (int64, error)
 }
 
 type FileMeta struct {
@@ -41,6 +41,10 @@ func NewMeta(isPrivate bool, contentType string, createdAt time.Time, password s
 	return FileMeta{isPrivate: isPrivate, contentType: contentType, createdAt: createdAt, hashedPassword: hashedPassword, salt: salt}
 }
 
+func NewMetaHashedPassword(isPrivate bool, contentType string, createdAt time.Time, hashedPassword string, salt string) FileMeta {
+	return FileMeta{isPrivate: isPrivate, contentType: contentType, createdAt: createdAt, hashedPassword: hashedPassword, salt: salt}
+}
+
 type Files struct {
 	storage Storage
 	expire  time.Duration
@@ -50,7 +54,7 @@ func (this *Files) isExpired(meta FileMeta, now time.Time) bool {
 	return now.Equal(meta.createdAt.Add(this.expire)) || now.After(meta.createdAt.Add(this.expire))
 }
 
-func (this *Files) Download(id int, now time.Time) ([]byte, FileMeta, error) {
+func (this *Files) Download(id int64, now time.Time) ([]byte, FileMeta, error) {
 	content, meta, err := this.storage.Fetch(id)
 	if this.isExpired(meta, now) {
 		return nil, FileMeta{}, errors.New("expired")
@@ -59,11 +63,11 @@ func (this *Files) Download(id int, now time.Time) ([]byte, FileMeta, error) {
 	}
 }
 
-func (this *Files) Upload(content []byte, isPrivate bool, password string, contentType string, now time.Time) int {
+func (this *Files) Upload(content []byte, isPrivate bool, password string, contentType string, now time.Time) (int64, error) {
 	return this.storage.Store(content, NewMeta(isPrivate, contentType, now, password))
 }
 
-func (this *Files) Delete(id int, password string, now time.Time) (int, error) {
+func (this *Files) Delete(id int64, password string, now time.Time) (int64, error) {
 	meta, err := this.storage.FetchMeta(id)
 	if err != nil {
 		return -1, err

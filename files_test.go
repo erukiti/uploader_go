@@ -13,17 +13,17 @@ type DummyStorageColumn struct {
 }
 
 type DummyStorage struct {
-	store map[int]DummyStorageColumn
-	id    int
+	store map[int64]DummyStorageColumn
+	id    int64
 }
 
-func (this *DummyStorage) Store(content []byte, meta FileMeta) int {
+func (this *DummyStorage) Store(content []byte, meta FileMeta) (int64, error) {
 	this.store[this.id] = DummyStorageColumn{content, meta}
 	this.id++
-	return this.id - 1
+	return this.id - 1, nil
 }
 
-func (this *DummyStorage) Fetch(id int) ([]byte, FileMeta, error) {
+func (this *DummyStorage) Fetch(id int64) ([]byte, FileMeta, error) {
 	if stored, ok := this.store[id]; ok {
 		return stored.content, stored.meta, nil
 	} else {
@@ -31,7 +31,7 @@ func (this *DummyStorage) Fetch(id int) ([]byte, FileMeta, error) {
 	}
 }
 
-func (this *DummyStorage) FetchMeta(id int) (FileMeta, error) {
+func (this *DummyStorage) FetchMeta(id int64) (FileMeta, error) {
 	if stored, ok := this.store[id]; ok {
 		return stored.meta, nil
 	} else {
@@ -39,7 +39,7 @@ func (this *DummyStorage) FetchMeta(id int) (FileMeta, error) {
 	}
 }
 
-func (this *DummyStorage) Delete(id int) (int, error) {
+func (this *DummyStorage) Delete(id int64) (int64, error) {
 	if _, ok := this.store[id]; ok {
 		delete(this.store, id)
 		return id, nil
@@ -50,7 +50,7 @@ func (this *DummyStorage) Delete(id int) (int, error) {
 
 func NewDummyStorage() *DummyStorage {
 	dummyStorage := new(DummyStorage)
-	dummyStorage.store = make(map[int]DummyStorageColumn)
+	dummyStorage.store = make(map[int64]DummyStorageColumn)
 	dummyStorage.id = 0
 	return dummyStorage
 }
@@ -58,7 +58,7 @@ func NewDummyStorage() *DummyStorage {
 func TestDownload(t *testing.T) {
 	dummyStorage := NewDummyStorage()
 	now, _ := time.Parse(time.RFC3339, "2014-01-01T00:00:00Z09:00")
-	id := dummyStorage.Store([]byte("hoge"), FileMeta{createdAt: now})
+	id, _ := dummyStorage.Store([]byte("hoge"), FileMeta{createdAt: now})
 
 	files := Files{storage: dummyStorage, expire: 1 * time.Minute}
 	content, _, err := files.Download(id, now)
@@ -70,7 +70,7 @@ func TestDownload2(t *testing.T) {
 	dummyStorage := NewDummyStorage()
 	now, _ := time.Parse(time.RFC3339, "2014-01-01T00:00:00Z09:00")
 
-	id := dummyStorage.Store([]byte("hoge"), FileMeta{createdAt: now})
+	id, _ := dummyStorage.Store([]byte("hoge"), FileMeta{createdAt: now})
 
 	files := Files{storage: dummyStorage, expire: 1 * time.Minute}
 	content, _, err := files.Download(id+1, now)
@@ -82,7 +82,7 @@ func TestDownload3(t *testing.T) {
 	dummyStorage := NewDummyStorage()
 	now, _ := time.Parse(time.RFC3339, "2014-01-01T00:00:00Z09:00")
 
-	id := dummyStorage.Store([]byte("hoge"), FileMeta{createdAt: now})
+	id, _ := dummyStorage.Store([]byte("hoge"), FileMeta{createdAt: now})
 
 	files := Files{storage: dummyStorage, expire: 1 * time.Minute}
 	content, _, err := files.Download(id, now.Add(1*time.Minute))
@@ -94,7 +94,8 @@ func TestUpload(t *testing.T) {
 	now, _ := time.Parse(time.RFC3339, "2014-01-01T00:00:00Z09:00")
 	dummyStorage := NewDummyStorage()
 	files := Files{storage: dummyStorage, expire: 1 * time.Minute}
-	id := files.Upload([]byte("hoge"), false, "", "image/png", now)
+	id, err := files.Upload([]byte("hoge"), false, "", "image/png", now)
+	assert.Nil(t, err)
 	content, _, _ := dummyStorage.Fetch(id)
 	assert.Equal(t, content, []byte("hoge"))
 }
@@ -103,15 +104,17 @@ func TestUpload2(t *testing.T) {
 	now, _ := time.Parse(time.RFC3339, "2014-01-01T00:00:00Z09:00")
 	dummyStorage := NewDummyStorage()
 	files := Files{storage: dummyStorage, expire: 1 * time.Minute}
-	id1 := files.Upload([]byte("hoge"), false, "", "image/png", now)
-	id2 := files.Upload([]byte("fuga"), false, "", "image/png", now)
+	id1, err1 := files.Upload([]byte("hoge"), false, "", "image/png", now)
+	id2, err2 := files.Upload([]byte("fuga"), false, "", "image/png", now)
 	assert.NotEqual(t, id1, id2)
+	assert.Nil(t, err1)
+	assert.Nil(t, err2)
 }
 
 func TestDelete(t *testing.T) {
 	now, _ := time.Parse(time.RFC3339, "2014-01-01T00:00:00Z09:00")
 	dummyStorage := NewDummyStorage()
-	id := dummyStorage.Store([]byte("hoge"), NewMeta(false, "image/png", now, "pass"))
+	id, _ := dummyStorage.Store([]byte("hoge"), NewMeta(false, "image/png", now, "pass"))
 	files := Files{storage: dummyStorage, expire: 1 * time.Minute}
 	id2, err := files.Delete(id, "pass", now)
 	assert.Equal(t, id, id2)
@@ -123,7 +126,7 @@ func TestDelete(t *testing.T) {
 func TestDelete2(t *testing.T) {
 	now, _ := time.Parse(time.RFC3339, "2014-01-01T00:00:00Z09:00")
 	dummyStorage := NewDummyStorage()
-	id := dummyStorage.Store([]byte("hoge"), NewMeta(false, "image/png", now, "pass"))
+	id, _ := dummyStorage.Store([]byte("hoge"), NewMeta(false, "image/png", now, "pass"))
 	files := Files{storage: dummyStorage, expire: 1 * time.Minute}
 	_, err := files.Delete(id, "pa", now)
 	assert.NotNil(t, err)
@@ -135,7 +138,7 @@ func TestDelete2(t *testing.T) {
 func TestDelete3(t *testing.T) {
 	now, _ := time.Parse(time.RFC3339, "2014-01-01T00:00:00Z09:00")
 	dummyStorage := NewDummyStorage()
-	id := dummyStorage.Store([]byte("hoge"), NewMeta(false, "image/png", now, "pass"))
+	id, _ := dummyStorage.Store([]byte("hoge"), NewMeta(false, "image/png", now, "pass"))
 	files := Files{storage: dummyStorage, expire: 1 * time.Minute}
 	_, err := files.Delete(id+1, "pass", now)
 	assert.NotNil(t, err)
@@ -147,7 +150,7 @@ func TestDelete3(t *testing.T) {
 func TestDelete4(t *testing.T) {
 	now, _ := time.Parse(time.RFC3339, "2014-01-01T00:00:00Z09:00")
 	dummyStorage := NewDummyStorage()
-	id := dummyStorage.Store([]byte("hoge"), NewMeta(false, "image/png", now, "pass"))
+	id, _ := dummyStorage.Store([]byte("hoge"), NewMeta(false, "image/png", now, "pass"))
 	files := Files{storage: dummyStorage, expire: 1 * time.Minute}
 	_, err := files.Delete(id, "pass", now.Add(1*time.Minute))
 	assert.NotNil(t, err)
