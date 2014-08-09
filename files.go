@@ -13,6 +13,12 @@ type Storage interface {
 	Fetch(id int64) ([]byte, FileMeta, error)
 	FetchMeta(id int64) (FileMeta, error)
 	Delete(id int64) (int64, error)
+	List() ([]FileList, error)
+}
+
+type FileList struct {
+	id        int64
+	createdAt time.Time
 }
 
 type FileMeta struct {
@@ -78,4 +84,19 @@ func (this *Files) Delete(id int64, password string, now time.Time) (int64, erro
 	} else {
 		return -1, errors.New("auth failed")
 	}
+}
+
+func (this *Files) List(now time.Time) ([]FileList, error) {
+	list, err := this.storage.List()
+	if err != nil {
+		return list, err
+	}
+	result := make([]FileList, 0)
+	for _, filelist := range list {
+		at := filelist.createdAt.Add(this.expire)
+		if now.Before(at) {
+			result = append(result, filelist)
+		}
+	}
+	return result, nil
 }

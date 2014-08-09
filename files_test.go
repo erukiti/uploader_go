@@ -48,6 +48,14 @@ func (this *DummyStorage) Delete(id int64) (int64, error) {
 	}
 }
 
+func (this *DummyStorage) List() ([]FileList, error) {
+	list := make([]FileList, 0)
+	for id, item := range this.store {
+		list = append(list, FileList{id: id, createdAt: item.meta.createdAt})
+	}
+	return list, nil
+}
+
 func NewDummyStorage() *DummyStorage {
 	dummyStorage := new(DummyStorage)
 	dummyStorage.store = make(map[int64]DummyStorageColumn)
@@ -154,4 +162,31 @@ func TestDelete4(t *testing.T) {
 	files := Files{storage: dummyStorage, expire: 1 * time.Minute}
 	_, err := files.Delete(id, "pass", now.Add(1*time.Minute))
 	assert.NotNil(t, err)
+}
+
+func TestList(t *testing.T) {
+	now, _ := time.Parse(time.RFC3339, "2014-01-01T00:00:00Z09:00")
+	dummyStorage := NewDummyStorage()
+	files := Files{storage: dummyStorage, expire: 1 * time.Minute}
+	list, _ := files.List(now)
+	assert.Equal(t, len(list), 0)
+}
+
+func TestList2(t *testing.T) {
+	now, _ := time.Parse(time.RFC3339, "2014-01-01T00:00:00Z09:00")
+	dummyStorage := NewDummyStorage()
+	id, _ := dummyStorage.Store([]byte("hoge"), NewMeta(false, "image/png", now, "pass"))
+	files := Files{storage: dummyStorage, expire: 1 * time.Minute}
+	list, _ := files.List(now)
+	assert.Equal(t, len(list), 1)
+	assert.Equal(t, list[0].id, id)
+}
+
+func TestList3(t *testing.T) {
+	now, _ := time.Parse(time.RFC3339, "2014-01-01T00:00:00Z09:00")
+	dummyStorage := NewDummyStorage()
+	_, _ = dummyStorage.Store([]byte("hoge"), NewMeta(false, "image/png", now, "pass"))
+	files := Files{storage: dummyStorage, expire: 1 * time.Minute}
+	list, _ := files.List(now.Add(1 * time.Minute))
+	assert.Equal(t, len(list), 0)
 }

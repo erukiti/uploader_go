@@ -74,3 +74,7 @@ func (this *storage) FetchMeta(id int64) (FileMeta, error) {
 func (this *storage) Delete(id int64) (int64, error) {
 	return -1, nil
 }
+
+func (this *storage) List() ([]FileList, error) {
+	return make([]FileList, 0), nil
+}
